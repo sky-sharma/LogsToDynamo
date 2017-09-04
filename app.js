@@ -18,52 +18,71 @@ var dataArray = [];
 var Connections = [];
 var Disconnections = [];
 
-s3.listObjects(params, function(err, data) {
-  // List files in Bucket
+// s3.listObjects(params, function(err, data) {
+//   // List files in Bucket
+//
+//   if (err) console.log(err, err.stack); // an error occurred
+//   else
+//   {
+//     var logFiles = data.Contents;
+//     logFiles.forEach((logFile) => {
+//       // Go through files in Bucket one by one
+//
+//       var logFileName = logFile.Key;
+//       params.Key = logFileName;
+//       // Get Log File Name
+//
+//       if(logFileName === 'CWL_Monitor_Logs.txt')
+//       {
 
-  if (err) console.log(err, err.stack); // an error occurred
-  else
-  {
-    var logFiles = data.Contents;
-    logFiles.forEach((logFile) => {
-      // Go through files in Bucket one by one
+//var ConnDisconnParam = { LogFileName: '', ConnectionsField: '', DisconnectionsField: '' };
 
-      var logFileName = logFile.Key;
-      params.Key = logFileName;
-      // Get Log File Name
+var ConnDisconnParams = [
+  { LogFileName: 'CWL_Monitor_Logs.txt',
+ConnectionType: 'Monitor' },
 
-      if(logFileName === 'CWL_Monitor_Logs.txt')
-      {
-      s3.getObject((params), (err, fileContents) => {
-        // Read contents of fileContents
+{ LogFileName: 'CWL_WebUI_Logs.txt',
+ConnectionType: 'WebUI' }
+]
 
-      if (err) throw err;
-      var logContents = fileContents.Body;
+ConnDisconnParams.forEach((ConnDisconnParam) => {
+  params.Key = ConnDisconnParam.LogFileName;
+  s3.getObject((params), (err, fileContents) => {
+    // Read contents of fileContents
 
-      Connections = utils.parseMonitorLog(logContents, 'Connect Status: SUCCESS', searchPatterns);
-      Disconnections = utils.parseMonitorLog(logContents, 'Disconnect Status: SUCCESS', searchPatterns);
-      
-      var dBaseParams = {
-        TableName: 'ConnectionsDisconnections',
-        Item: {
-          'Connections': Connections.length,
-          'Disconnections': Disconnections.length
-        }
-      }
+  if (err) throw err;
+  var logContents = fileContents.Body;
+  //var connectionTypeFieldName = JSON.stringify(ConnDisconnParam.ConnectionType);
+  // var disconnectionsFieldName = JSON.stringify(ConnDisconnParam.DisconnectionsField);
 
-      console.log(dBaseParams);
-      docClient.put(dBaseParams, (err, data) => {
-             if (err) {
-                 console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
-             } else {
-                 console.log('PutItem succeeded');
-             }
-          });
-    });
-      };
-  });
-  };
+  Connections = utils.parseMonitorLog(logContents, 'Connect Status: SUCCESS', searchPatterns);
+  Disconnections = utils.parseMonitorLog(logContents, 'Disconnect Status: SUCCESS', searchPatterns);
+
+
+  var dBaseParams = {
+    TableName: 'ConnectionsDisconnections',
+    Item: {
+      'ConnectionType': ConnDisconnParam.ConnectionType,
+      '#Connections': Connections.length,
+      '#Disconnections': Disconnections.length
+    }
+  }
+
+  docClient.put(dBaseParams, (err, data) => {
+         if (err) {
+             console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
+         } else {
+             console.log('PutItem succeeded');
+         }
+      });
 });
+
+    });
+//   );
+//       };
+//   });
+//   };
+// });
 
 /*
 fs.readdir(logsDir, (err, logFiles) => {
