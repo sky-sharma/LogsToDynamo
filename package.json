@@ -1,0 +1,20 @@
+{
+  "name": "source",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "git://github.com/aws/aws-sdk-js.git",
+    "fs": "0.0.1-security",
+    "path": "^0.12.7",
+    "scanf": "^0.7.3",
+    "sscanf": "^0.8.0",
+    "util": "^0.10.3"
+  }
+}
