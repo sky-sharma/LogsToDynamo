@@ -45,55 +45,32 @@ ConnectionType: 'Monitor' },
 ConnectionType: 'WebUI' }
 ]
 
-ConnDisconnParams.forEach((ConnDisconnParam) => {
+ConnDisconnParams.forEach((ConnDisconnParam) =>
+{
   params.Key = ConnDisconnParam.LogFileName;
-  s3.getObject((params), (err, fileContents) => {
+  s3.getObject((params), (err, fileContents) =>
+  {
     // Read contents of fileContents
+    if (err) throw err;
+    var logContents = fileContents.Body;
 
-  if (err) throw err;
-  var logContents = fileContents.Body;
-  //var connectionTypeFieldName = JSON.stringify(ConnDisconnParam.ConnectionType);
-  // var disconnectionsFieldName = JSON.stringify(ConnDisconnParam.DisconnectionsField);
+    Connections = utils.parseMonitorLog(logContents, 'Connect Status: SUCCESS', searchPatterns);
+    Disconnections = utils.parseMonitorLog(logContents, 'Disconnect Status: SUCCESS', searchPatterns);
 
-  Connections = utils.parseMonitorLog(logContents, 'Connect Status: SUCCESS', searchPatterns);
-  Disconnections = utils.parseMonitorLog(logContents, 'Disconnect Status: SUCCESS', searchPatterns);
-
-
-  var dBaseParams = {
-    TableName: 'ConnectionsDisconnections',
-    Item: {
-      'ConnectionType': ConnDisconnParam.ConnectionType,
-      '#Connections': Connections.length,
-      '#Disconnections': Disconnections.length
+    var dBaseParams = {
+      TableName: 'ConnectionsDisconnections',
+      Item: {
+        'ConnectionType': ConnDisconnParam.ConnectionType,
+        'NumConnections': Connections.length,
+        'NumDisconnections': Disconnections.length
+      }
     }
-  }
 
-  docClient.put(dBaseParams, (err, data) => {
-         if (err) {
-             console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
-         } else {
-             console.log('PutItem succeeded');
-         }
-      });
-});
-
-    });
-//   );
-//       };
-//   });
-//   };
-// });
-
-/*
-fs.readdir(logsDir, (err, logFiles) => {
-  logFiles.forEach((logFile) => {
-    fs.readFile((path.join(logsDir, logFile)), (err, logContents) => {
-      if (err) throw err;
-      console.log(path.basename(logFile, '.txt'));
-      var floatsArray = utils.parseStrForFloats(logContents, fields);
-      console.log(floatsArray);
-      console.log(utils.calcColAvgs(floatsArray));
+    // Put data in dBase
+    docClient.put(dBaseParams, (err, data) =>
+    {
+      if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
+      else console.log('PutItem succeeded');
     });
   });
 });
-*/
