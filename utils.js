@@ -1,48 +1,47 @@
 const scanf = require('scanf')
 const sscanf = require('scanf').sscanf;
-var returnObject = {};
-var returnData = [];
-var returnObjects = [];
+var rawDataRows = [];
+var connectionInfoFromAllRows = []; //2D Array of connection info. from all rows
+var connectionInfoFromRowPlusStatus = []; //1D array of connection info. rom 1 row along with Bool indicating connection status
 
-module.exports.parseMonitorWebUILog = (dataStr, searchStrings, keySearchPattern, dataSearchPatterns) =>
+module.exports.parseLog = (dataStr, searchStrings, dataSearchPatterns) =>
 {
-// Receives a string from a Monitor Log file,looks for searchString,
-// and returns the items defined by searchPatterns.
-console.log(dataSearchPatterns);
-returnDataArray = [];
-var rawDataRows = dataStr.toString().split('\n');
-for (var i = 0; i < rawDataRows.length; i++)
+  // Receives a string from a Monitor Log file,looks for searchString,
+  // and returns the items defined by searchPatterns.
+
+  connectionInfoFromAllRows = [];
+
+  rawDataRows = dataStr.toString().split('\n');
+  for (var i = 0; i < rawDataRows.length; i++)
+  {
+    // Check if dataRow contains either Connection or Disconnection searchString
+    if(rawDataRows[i].indexOf(searchStrings.Connection) > -1)
+    {
+      connectionInfoFromRowPlusStatus = parseConnectionInfo(rawDataRows[i + 1], dataSearchPatterns);
+      connectionInfoFromRowPlusStatus.push('Connected');
+    }
+    else if(rawDataRows[i].indexOf(searchStrings.Disconnection) > -1)
+    {
+      connectionInfoFromRowPlusStatus = parseConnectionInfo(rawDataRows[i + 1], dataSearchPatterns);
+      connectionInfoFromRowPlusStatus.push('Disconnected');
+    }
+    connectionInfoFromAllRows.push(connectionInfoFromRowPlusStatus);
+  };
+  return connectionInfoFromAllRows;
+};
+
+function parseConnectionInfo(rowWithInfo, dataSearchPatterns)
 {
-  returnDataRow = [];
-
-  if(rawDataRows[i].indexOf(searchStrings.Connection) > -1)
-  // Check if dataRow contains Connection searchString
+  var connectionInfoFromRow = [];
+  dataSearchPatterns.forEach((dataSearchPattern) =>
   {
-    var returnObjectKey = sscanf(rawDataRows[i + 1], keySearchPattern);
-    returnObject.key = returnObjectKey;
+    // Parse out parameter values found after searchPattern
+    // and create row of those values.
 
-    dataSearchPatterns.forEach((dataSearchPattern) =>
-    {
-      // Parse out parameter values found after searchPattern
-      // and create row of those values.
+    connectionInfoFromRow.push(sscanf(rowWithInfo, dataSearchPattern));
+    // The first row contains the connection or
+    // disconnection status. The second row contains the TraceID and other info.
+  });
 
-      returnData.push(sscanf(rawDataRows[i + 1], dataSearchPattern));
-      // The first row contains the connection or
-      // disconnection status. The second row contains the TraceID and other info.
-
-      returnObject.Data = returnData;
-
-      // Put returnObject into array
-      returnObjects.push(returnObject);
-    });
-  } else if(rawDataRows[i].indexOf(searchStrings.Disconnection) > -1)
-  // Check if dataRow contains Disconnection searchString
-  {
-    console.log(returnObjects.findIndex((returnObject, returnObjectKey) =>
-    {
-        return returnObject.key === returnObjectKey;
-    }));
-  }
-  return returnObjects;
-};
-};
+  return connectionInfoFromRow;
+}

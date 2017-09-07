@@ -13,8 +13,7 @@ var params = {
   Bucket: 'connection-logs' /* required */};
 
 var searchStrings = { Connection: 'Connect Status: SUCCESS', Disconnection: 'Disconnect Status: SUCCESS' };
-var keySearchPattern = 'PRINCIPALID:%s ';
-var dataSearchPatterns = ['%s %s', 'TRACEID:%s', 'IpAddress: %s ', 'SourcePort: %s'];
+var dataSearchPatterns = ['%s %s', 'TRACEID:%s', 'PRINCIPALID:%s', 'IpAddress: %s ', 'SourcePort: %s'];
 var dataArray = [];
 var AllConnections = [];
 var Disconnections = [];
@@ -44,9 +43,9 @@ s3.listObjects(params, function(err, data)
         // Read contents of fileContents
         if (err) throw err;
         var logContents = fileContents.Body;
-        console.log(logContents);
 
-        Connections = utils.parseMonitorWebUILog(logContents, searchStrings, keySearchPattern, dataSearchPatterns);
+        Connections = utils.parseLog(logContents, searchStrings, dataSearchPatterns);
+
         console.log(Connections);
 
         // Put NumConnections & NumDisconnections in ConnectionsDisconnections table
@@ -67,25 +66,28 @@ s3.listObjects(params, function(err, data)
         });
         */
 
-        // Put IpAddresses of Connections in ConnectionIP table.
-        Connections.forEach((Connection) => {
-          {
-            var dBaseParams = {
-              TableName: 'Connections',
-              Item: {
-                'PrincipalID': Connection.key,
-                'IpAddress': Connection.Data[2]
-              }
-            }
+        // Put IpAddresses of Connections in Connections table.
 
-            docClient.put(dBaseParams, (err, data) =>
-            {
-              if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
-              else console.log('PutItem succeeded');
-            });
+        Connections.forEach((Connection) => {
+        {
+          var dBaseParams =
+          {
+          TableName: 'Connections',
+          Item: {
+                'PrincipalID': Connection[2],
+                'IpAddress': Connection[3],
+                'Status': Connection[5], //Connected or Disconnected
+                'LastConnDisconn': Connection[0][0] + ' ' + Connection[0][1] // Concatenating Date and Time
+                }
           }
-        })
-      });
-    })
-  }
-});
+
+          docClient.put(dBaseParams, (err, data) =>
+          {
+            if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
+            else console.log('PutItem succeeded');
+          });
+        }
+      })
+    });
+  })
+}});
