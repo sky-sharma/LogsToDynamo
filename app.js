@@ -4,73 +4,88 @@ const utils = require('./utils.js');
 const aws = require('aws-sdk');
 
 var s3 = new aws.S3();
-var dynamodb = new aws.DynamoDB({ region: 'us-east-1' });
+var dynamodb = new aws.DynamoDB({ region: 'us-west-2' });
 var docClient = new aws.DynamoDB.DocumentClient({ service: dynamodb });
 
-aws.config.update({ endpoint: 'https://dynamodb.us-east-1.amazonaws.com' });
+aws.config.update({ endpoint: 'https://s3.us-west-2.amazonaws.com' });
 
 var params = {
-  Bucket: 'connection-disconnection-logs' /* required */};
+  Bucket: 'connection-logs' /* required */};
 
-//var searchStrings = ['Connect Status: SUCCESS', 'Disconnect Status: SUCCESS'];
-var searchPatterns = ['TRACEID:%s', 'IpAddress: %s ', 'SourcePort: %s'];
+var searchStrings = { Connection: 'Connect Status: SUCCESS', Disconnection: 'Disconnect Status: SUCCESS' };
+var keySearchPattern = 'PRINCIPALID:%s ';
+var dataSearchPatterns = ['%s %s', 'TRACEID:%s', 'IpAddress: %s ', 'SourcePort: %s'];
 var dataArray = [];
-var Connections = [];
+var AllConnections = [];
 var Disconnections = [];
+var ActiveConnections = [];
 
-// s3.listObjects(params, function(err, data) {
-//   // List files in Bucket
+// var ConnDisconnParams = [
+//   { LogFileName: 'CWL_Monitor_Logs.txt',
+// ConnectionType: 'Monitor' },
 //
-//   if (err) console.log(err, err.stack); // an error occurred
-//   else
-//   {
-//     var logFiles = data.Contents;
-//     logFiles.forEach((logFile) => {
-//       // Go through files in Bucket one by one
-//
-//       var logFileName = logFile.Key;
-//       params.Key = logFileName;
-//       // Get Log File Name
-//
-//       if(logFileName === 'CWL_Monitor_Logs.txt')
-//       {
+// { LogFileName: 'CWL_WebUI_Logs.txt',
+// ConnectionType: 'WebUI' }
+// ]
 
-//var ConnDisconnParam = { LogFileName: '', ConnectionsField: '', DisconnectionsField: '' };
-
-var ConnDisconnParams = [
-  { LogFileName: 'CWL_Monitor_Logs.txt',
-ConnectionType: 'Monitor' },
-
-{ LogFileName: 'CWL_WebUI_Logs.txt',
-ConnectionType: 'WebUI' }
-]
-
-ConnDisconnParams.forEach((ConnDisconnParam) =>
+s3.listObjects(params, function(err, data)
 {
-  params.Key = ConnDisconnParam.LogFileName;
-  s3.getObject((params), (err, fileContents) =>
+  if (err) console.log(err, err.stack); //an error occurred
+  else
   {
-    // Read contents of fileContents
-    if (err) throw err;
-    var logContents = fileContents.Body;
+    var logFiles = data.Contents;
+    logFiles.forEach((logFile) => {
+      var logFileName = logFile.Key;
+      params.Key = logFileName;
+      // Get Log File Name
 
-    Connections = utils.parseMonitorLog(logContents, 'Connect Status: SUCCESS', searchPatterns);
-    Disconnections = utils.parseMonitorLog(logContents, 'Disconnect Status: SUCCESS', searchPatterns);
+      s3.getObject((params), (err, fileContents) =>
+      {
+        // Read contents of fileContents
+        if (err) throw err;
+        var logContents = fileContents.Body;
+        console.log(logContents);
 
-    var dBaseParams = {
-      TableName: 'ConnectionsDisconnections',
-      Item: {
-        'ConnectionType': ConnDisconnParam.ConnectionType,
-        'NumConnections': Connections.length,
-        'NumDisconnections': Disconnections.length
-      }
-    }
+        Connections = utils.parseMonitorWebUILog(logContents, searchStrings, keySearchPattern, dataSearchPatterns);
+        console.log(Connections);
 
-    // Put data in dBase
-    docClient.put(dBaseParams, (err, data) =>
-    {
-      if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
-      else console.log('PutItem succeeded');
-    });
-  });
+        // Put NumConnections & NumDisconnections in ConnectionsDisconnections table
+        /*
+        var dBaseParams = {
+          TableName: 'Connections',
+          Item: {
+            'ConnectionType': ConnDisconnParam.ConnectionType,
+            'NumConnections': Connections.length,
+            'NumDisconnections': Disconnections.length
+          }
+        }
+
+        docClient.put(dBaseParams, (err, data) =>
+        {
+          if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
+          else console.log('PutItem succeeded');
+        });
+        */
+
+        // Put IpAddresses of Connections in ConnectionIP table.
+        Connections.forEach((Connection) => {
+          {
+            var dBaseParams = {
+              TableName: 'Connections',
+              Item: {
+                'PrincipalID': Connection.key,
+                'IpAddress': Connection.Data[2]
+              }
+            }
+
+            docClient.put(dBaseParams, (err, data) =>
+            {
+              if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
+              else console.log('PutItem succeeded');
+            });
+          }
+        })
+      });
+    })
+  }
 });

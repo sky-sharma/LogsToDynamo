@@ -1,35 +1,48 @@
 const scanf = require('scanf')
 const sscanf = require('scanf').sscanf;
-var returnDataArray = [];
-var returnDataRows = [];
+var returnObject = {};
+var returnData = [];
+var returnObjects = [];
 
-module.exports.parseMonitorLog = (dataStr, searchString, searchPatterns) => {
+module.exports.parseMonitorWebUILog = (dataStr, searchStrings, keySearchPattern, dataSearchPatterns) =>
+{
 // Receives a string from a Monitor Log file,looks for searchString,
 // and returns the items defined by searchPatterns.
-
+console.log(dataSearchPatterns);
 returnDataArray = [];
 var rawDataRows = dataStr.toString().split('\n');
 for (var i = 0; i < rawDataRows.length; i++)
 {
   returnDataRow = [];
 
-  if(rawDataRows[i].indexOf(searchString) > -1)
-  // Check if dataRow contains searchString
+  if(rawDataRows[i].indexOf(searchStrings.Connection) > -1)
+  // Check if dataRow contains Connection searchString
   {
-    searchPatterns.forEach((searchPattern) => {
+    var returnObjectKey = sscanf(rawDataRows[i + 1], keySearchPattern);
+    returnObject.key = returnObjectKey;
 
-      // Parse out parameter values found after sarchPattern
+    dataSearchPatterns.forEach((dataSearchPattern) =>
+    {
+      // Parse out parameter values found after searchPattern
       // and create row of those values.
 
-      returnDataRow.push(sscanf(rawDataRows[i + 1], searchPattern));
+      returnData.push(sscanf(rawDataRows[i + 1], dataSearchPattern));
       // The first row contains the connection or
-      // disconnection status.  The second row contains the TraceID and other info.
+      // disconnection status. The second row contains the TraceID and other info.
 
+      returnObject.Data = returnData;
+
+      // Put returnObject into array
+      returnObjects.push(returnObject);
     });
-
-    // Put data row into 2D array
-    returnDataArray.push(returnDataRow);
+  } else if(rawDataRows[i].indexOf(searchStrings.Disconnection) > -1)
+  // Check if dataRow contains Disconnection searchString
+  {
+    console.log(returnObjects.findIndex((returnObject, returnObjectKey) =>
+    {
+        return returnObject.key === returnObjectKey;
+    }));
   }
-}
-return returnDataArray;
+  return returnObjects;
+};
 };
