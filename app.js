@@ -19,14 +19,6 @@ var AllConnections = [];
 var Disconnections = [];
 var ActiveConnections = [];
 
-// var ConnDisconnParams = [
-//   { LogFileName: 'CWL_Monitor_Logs.txt',
-// ConnectionType: 'Monitor' },
-//
-// { LogFileName: 'CWL_WebUI_Logs.txt',
-// ConnectionType: 'WebUI' }
-// ]
-
 s3.listObjects(params, function(err, data)
 {
   if (err) console.log(err, err.stack); //an error occurred
@@ -58,13 +50,13 @@ s3.listObjects(params, function(err, data)
 
           var dBasePutParams =
           {
-          TableName: 'Connections',
+          TableName: 'Indie_Connections',
           Item:
             {
               'PrincipalID': PrincipalID,
-              'IpAddress': IpAddress,
-              'Status': Status, //Connected or Disconnected
-              'LastConnDisconn': LastConnDisconn, // Concatenating Date and Time
+              'Last_IpAddress': IpAddress,
+              'Current_Status': Status, //Connected or Disconnected
+              'LastConnDisconn_Time': LastConnDisconn, // Concatenating Date and Time
               'TotalNumConnections': TotalNumConnections,
               'TotalNumDisconnections': TotalNumDisconnections
             }
@@ -72,11 +64,10 @@ s3.listObjects(params, function(err, data)
 
           var dBaseGetParams =
           {
-            TableName: 'Connections',
+            TableName: 'Indie_Connections',
             Key:
               {
-                'PrincipalID': PrincipalID,
-                'IpAddress': IpAddress
+                'PrincipalID': PrincipalID
               }
           }
 
@@ -89,7 +80,6 @@ s3.listObjects(params, function(err, data)
               docClient.put(dBasePutParams, (err, data) =>
               {
                 if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
-                else console.log('PutItem succeeded');
               });
             }
 
@@ -107,7 +97,6 @@ s3.listObjects(params, function(err, data)
               docClient.put(dBasePutParams, (err, data) =>
               {
                 if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
-                else console.log('Modified Record');
               });
             }
           });

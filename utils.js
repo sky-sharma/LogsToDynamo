@@ -32,6 +32,7 @@ module.exports.parseLog = (dataStr, searchStrings, dataSearchPatterns) =>
       connectionInfoFromRowPlusStatus.push(numConnections);
       connectionInfoFromRowPlusStatus.push(++numDisconnections);
     }
+
     connectionInfoFromAllRows.push(connectionInfoFromRowPlusStatus);
   };
   return connectionInfoFromAllRows;
