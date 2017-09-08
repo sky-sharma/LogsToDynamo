@@ -11,6 +11,9 @@ module.exports.parseLog = (dataStr, searchStrings, dataSearchPatterns) =>
 
   connectionInfoFromAllRows = [];
 
+  var numConnections = 0;
+  var numDisconnections = 0;
+
   rawDataRows = dataStr.toString().split('\n');
   for (var i = 0; i < rawDataRows.length; i++)
   {
@@ -19,11 +22,15 @@ module.exports.parseLog = (dataStr, searchStrings, dataSearchPatterns) =>
     {
       connectionInfoFromRowPlusStatus = parseConnectionInfo(rawDataRows[i + 1], dataSearchPatterns);
       connectionInfoFromRowPlusStatus.push('Connected');
+      connectionInfoFromRowPlusStatus.push(++numConnections);
+      connectionInfoFromRowPlusStatus.push(numDisconnections);
     }
     else if(rawDataRows[i].indexOf(searchStrings.Disconnection) > -1)
     {
       connectionInfoFromRowPlusStatus = parseConnectionInfo(rawDataRows[i + 1], dataSearchPatterns);
       connectionInfoFromRowPlusStatus.push('Disconnected');
+      connectionInfoFromRowPlusStatus.push(numConnections);
+      connectionInfoFromRowPlusStatus.push(++numDisconnections);
     }
     connectionInfoFromAllRows.push(connectionInfoFromRowPlusStatus);
   };

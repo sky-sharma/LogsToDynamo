@@ -5,7 +5,7 @@ const aws = require('aws-sdk');
 
 var s3 = new aws.S3();
 var dynamodb = new aws.DynamoDB({ region: 'us-west-2' });
-var docClient = new aws.DynamoDB.DocumentClient({ service: dynamodb });
+var docClient = new aws.DynamoDB.DocumentClient({ service: dynamodb, apiVersion: '2012-08-10' });
 
 aws.config.update({ endpoint: 'https://s3.us-west-2.amazonaws.com' });
 
@@ -46,45 +46,70 @@ s3.listObjects(params, function(err, data)
 
         Connections = utils.parseLog(logContents, searchStrings, dataSearchPatterns);
 
-        console.log(Connections);
-
-        // Put NumConnections & NumDisconnections in ConnectionsDisconnections table
-        /*
-        var dBaseParams = {
-          TableName: 'Connections',
-          Item: {
-            'ConnectionType': ConnDisconnParam.ConnectionType,
-            'NumConnections': Connections.length,
-            'NumDisconnections': Disconnections.length
-          }
-        }
-
-        docClient.put(dBaseParams, (err, data) =>
-        {
-          if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
-          else console.log('PutItem succeeded');
-        });
-        */
-
         // Put IpAddresses of Connections in Connections table.
-
         Connections.forEach((Connection) => {
         {
-          var dBaseParams =
+          var PrincipalID = Connection[2];
+          var IpAddress = Connection[3];
+          var Status = Connection[5];
+          var LastConnDisconn = Connection[0][0] + ' ' + Connection[0][1];
+          var TotalNumConnections = Connection[6];
+          var TotalNumDisconnections = Connection[7];
+
+          var dBasePutParams =
           {
           TableName: 'Connections',
-          Item: {
-                'PrincipalID': Connection[2],
-                'IpAddress': Connection[3],
-                'Status': Connection[5], //Connected or Disconnected
-                'LastConnDisconn': Connection[0][0] + ' ' + Connection[0][1] // Concatenating Date and Time
-                }
+          Item:
+            {
+              'PrincipalID': PrincipalID,
+              'IpAddress': IpAddress,
+              'Status': Status, //Connected or Disconnected
+              'LastConnDisconn': LastConnDisconn, // Concatenating Date and Time
+              'TotalNumConnections': TotalNumConnections,
+              'TotalNumDisconnections': TotalNumDisconnections
+            }
           }
 
-          docClient.put(dBaseParams, (err, data) =>
+          var dBaseGetParams =
           {
-            if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
-            else console.log('PutItem succeeded');
+            TableName: 'Connections',
+            Key:
+              {
+                'PrincipalID': PrincipalID,
+                'IpAddress': IpAddress
+              }
+          }
+
+          docClient.get(dBaseGetParams, (err, readRecord) =>
+          {
+            if (err) console.log(err);
+            else if ((Object.keys(readRecord).length === 0) && (readRecord.constructor === Object))
+            // The particular record is not found in the dBase, so enter it
+            {
+              docClient.put(dBasePutParams, (err, data) =>
+              {
+                if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
+                else console.log('PutItem succeeded');
+              });
+            }
+
+            else
+            {
+              // If Status is Connected then take TotalNumConnections for this PrincipalID in dBase,
+              // add new TotalNumConnections and write this new val to dBase.
+
+              // If Status is Disonnected then take TotalNumDisconnections for this PrincipalID in dBase,
+              // add new TotalNumDisconnections and write this new val to dBase.
+              
+              dBasePutParams.Item.TotalNumConnections += readRecord.Item.TotalNumConnections;
+              dBasePutParams.Item.TotalNumDisconnections += readRecord.Item.TotalNumDisconnections;
+
+              docClient.put(dBasePutParams, (err, data) =>
+              {
+                if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
+                else console.log('Modified Record');
+              });
+            }
           });
         }
       })
