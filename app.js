@@ -5,7 +5,7 @@ const aws = require('aws-sdk');
 
 var s3 = new aws.S3();
 var dynamodb = new aws.DynamoDB({ region: 'us-west-2' });
-var docClient = new aws.DynamoDB.DocumentClient({ service: dynamodb, apiVersion: '2012-08-10' });
+var docClient = new aws.DynamoDB.DocumentClient({ service: dynamodb });
 
 aws.config.update({ endpoint: 'https://s3.us-west-2.amazonaws.com' });
 
@@ -100,7 +100,7 @@ s3.listObjects(params, function(err, data)
 
               // If Status is Disonnected then take TotalNumDisconnections for this PrincipalID in dBase,
               // add new TotalNumDisconnections and write this new val to dBase.
-              
+
               dBasePutParams.Item.TotalNumConnections += readRecord.Item.TotalNumConnections;
               dBasePutParams.Item.TotalNumDisconnections += readRecord.Item.TotalNumDisconnections;
 
