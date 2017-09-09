@@ -63,8 +63,6 @@ function getAndPutConnection(Connections, ConnectionNum)
   // We read a record from the dBase, get the Number of Connections and Number of Disconnections
   // from the record and add to those.
 
-console.log(Connections.length);
-
   if (ConnectionNum >= Connections.length)
   {
     readS3AndGetPutConnection(logFiles, logFileNum++);
@@ -76,8 +74,8 @@ console.log(Connections.length);
   var IpAddress = Connection[3];
   var Status = Connection[5];
   var LastConnDisconn = Connection[0][0] + ' ' + Connection[0][1];
-  var TotalNumConnections = Connection[6];
-  var TotalNumDisconnections = Connection[7];
+  // var TotalNumConnections = Connection[6];
+  // var TotalNumDisconnections = Connection[7];
 
   var dBasePutParams =
   {
@@ -87,9 +85,9 @@ console.log(Connections.length);
       'PrincipalID': PrincipalID,
       'Last_IpAddress': IpAddress,
       'Current_Status': Status, //Connected or Disconnected
-      'LastConnDisconn_Time': LastConnDisconn, // Concatenating Date and Time
-      'TotalNumConnections': TotalNumConnections,
-      'TotalNumDisconnections': TotalNumDisconnections
+      'LastConnDisconn_Time': LastConnDisconn // Concatenating Date and Time
+      // 'TotalNumConnections': 0, // Will be updated by reading existing TotalNumConnections in dBase and incrementing
+      // 'TotalNumDisconnections': 0 // Will be updated by reading existing TotalNumDisconnections in dBase and incrementing
     }
   }
 
@@ -108,12 +106,26 @@ console.log(Connections.length);
     else if ((Object.keys(readRecord).length === 0) && (readRecord.constructor === Object))
     // The particular record is not found in the dBase, so enter it
     {
+
+      // If Status is Connected then take TotalNumConnections for this PrincipalID in dBase and increment
+      // If Status is Disonnected then take TotalNumDisconnections for this PrincipalID in dBase and decrement.
+
+      if (Status === 'Connected')
+      {
+        dBasePutParams.Item.TotalNumConnections = 1;
+        dBasePutParams.Item.TotalNumDisconnections = 0;
+      }
+      else
+      {
+        dBasePutParams.Item.TotalNumConnections = 0;
+        dBasePutParams.Item.TotalNumDisconnections = 1;
+      }
+
       docClient.put(dBasePutParams, (err, data) =>
       {
         if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
         else
         {
-          console.log('TotalNumDisconnections: ', TotalNumDisconnections);
           getAndPutConnection(Connections, ConnectionNum + 1); // This function calls itself recursively
         }
       });
@@ -121,14 +133,20 @@ console.log(Connections.length);
 
     else
     {
-      // If Status is Connected then take TotalNumConnections for this PrincipalID in dBase,
-      // add new TotalNumConnections and write this new val to dBase.
+      // If Status is Connected then take TotalNumConnections for this PrincipalID in dBase and increment
+      // If Status is Disonnected then take TotalNumDisconnections for this PrincipalID in dBase and decrement.
 
-      // If Status is Disonnected then take TotalNumDisconnections for this PrincipalID in dBase,
-      // add new TotalNumDisconnections and write this new val to dBase.
+      if (Status === 'Connected')
+      {
+        dBasePutParams.Item.TotalNumConnections = readRecord.Item.TotalNumConnections + 1;
+        dBasePutParams.Item.TotalNumDisconnections = readRecord.Item.TotalNumDisconnections;
+      }
+      else
+      {
+        dBasePutParams.Item.TotalNumConnections = readRecord.Item.TotalNumConnections;
+        dBasePutParams.Item.TotalNumDisconnections = readRecord.Item.TotalNumDisconnections + 1;
+      }
 
-      dBasePutParams.Item.TotalNumConnections += readRecord.Item.TotalNumConnections;
-      dBasePutParams.Item.TotalNumDisconnections += readRecord.Item.TotalNumDisconnections;
       docClient.put(dBasePutParams, (err, data) =>
       {
         if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));

@@ -26,16 +26,16 @@ module.exports.parseLog = (dataStr, searchStrings, dataSearchPatterns) =>
     {
       connectionInfoFromRowPlusStatus = parseConnectionInfo(rawDataRows[i + 1], dataSearchPatterns);
       connectionInfoFromRowPlusStatus.push('Connected');
-      connectionInfoFromRowPlusStatus.push(++numConnections);
-      connectionInfoFromRowPlusStatus.push(numDisconnections);
+      // connectionInfoFromRowPlusStatus.push(++numConnections);
+      // connectionInfoFromRowPlusStatus.push(numDisconnections);
       connectionInfoFromAllRows.push(connectionInfoFromRowPlusStatus);
     }
     else if(rawDataRows[i].indexOf(searchStrings.Disconnection) > -1)
     {
       connectionInfoFromRowPlusStatus = parseConnectionInfo(rawDataRows[i + 1], dataSearchPatterns);
       connectionInfoFromRowPlusStatus.push('Disconnected');
-      connectionInfoFromRowPlusStatus.push(numConnections);
-      connectionInfoFromRowPlusStatus.push(++numDisconnections);
+      // connectionInfoFromRowPlusStatus.push(numConnections);
+      // connectionInfoFromRowPlusStatus.push(++numDisconnections);
       connectionInfoFromAllRows.push(connectionInfoFromRowPlusStatus);
     }
   };
