@@ -14,10 +14,11 @@ var params = {
 
 var searchStrings = { Connection: 'Connect Status: SUCCESS', Disconnection: 'Disconnect Status: SUCCESS' };
 var dataSearchPatterns = ['%s %s', 'TRACEID:%s', 'PRINCIPALID:%s', 'IpAddress: %s ', 'SourcePort: %s'];
-var dataArray = [];
-var AllConnections = [];
-var Disconnections = [];
-var ActiveConnections = [];
+var Connections = []; // Clear array of Connections collected from last file
+
+// var dataArray = [];
+// var AllConnections = [];
+// var Disconnections = [];
 
 s3.listObjects(params, function(err, data)
 {
@@ -37,6 +38,7 @@ s3.listObjects(params, function(err, data)
         var logContents = fileContents.Body;
 
         Connections = utils.parseLog(logContents, searchStrings, dataSearchPatterns);
+        console.log(Connections);
 
         // Put IpAddresses of Connections in Connections table.
         Connections.forEach((Connection) => {
@@ -101,7 +103,7 @@ s3.listObjects(params, function(err, data)
             }
           });
         }
-      })
+      });
     });
   })
 }});
