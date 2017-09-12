@@ -7,7 +7,7 @@ var s3 = new aws.S3();
 var dynamodb = new aws.DynamoDB({ region: 'us-west-2' });
 var docClient = new aws.DynamoDB.DocumentClient({ service: dynamodb });
 
-aws.config.update({ endpoint: 'https://s3.us-west-2.amazonaws.com' });
+//aws.config.update({ endpoint: 'https://s3.us-west-2.amazonaws.com' });
 
 var params = {
   Bucket: 'connection-logs' /* required */};
