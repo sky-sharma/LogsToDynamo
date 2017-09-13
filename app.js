@@ -37,9 +37,9 @@ function readS3AndGetPutConnection(logFiles, logFileIndex)
   // This involves reading existing numbers of connections / disconnections
   // from the dBase and adding to the tallies.
 
-  console.log('logFileIndex: ', logFileIndex);
-
   if (logFileIndex >= logFiles.length) return; // All done
+
+  console.log('logFileIndex: ', logFileIndex);
 
   var logFileName = logFiles[logFileIndex].Key;
   params.Key = logFileName;
@@ -54,7 +54,7 @@ function readS3AndGetPutConnection(logFiles, logFileIndex)
     ConnectionsThisFile = utils.parseLog(logContents, searchStrings, dataSearchPatterns);
     getAndPutConnection(ConnectionsThisFile, 0);
   });
-};
+}
 
 // Put IpAddresses of Connections in Connections table.
 function getAndPutConnection(Connections, ConnectionNum)
