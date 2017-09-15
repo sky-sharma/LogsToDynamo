@@ -5,7 +5,7 @@ var connectionInfoFromRow = []; //1D array of connection info. from 1 row
 var connectionInfoFromRowPlusStatus = []; //1D array of connection info. rom 1 row along with String indicating connection status
 var connectionInfoFromAllRows = []; //2D Array of connection info. from all rows
 
-module.exports.parseLog = (dataStr, searchStrings, dataSearchPatterns) =>
+module.exports.parseLog = (dataStr, searchStrings, connInfoSearchPatterns) =>
 {
   // Receives a string from a Monitor Log file,looks for searchString,
   // and returns the items defined by searchPatterns.
@@ -24,7 +24,7 @@ module.exports.parseLog = (dataStr, searchStrings, dataSearchPatterns) =>
     // Check if dataRow contains either Connection or Disconnection searchString
     if(rawDataRows[i].indexOf(searchStrings.Connection) > -1)
     {
-      connectionInfoFromRowPlusStatus = parseConnectionInfo(rawDataRows[i + 1], dataSearchPatterns);
+      connectionInfoFromRowPlusStatus = parseConnectionInfo(rawDataRows[i + 1], connInfoSearchPatterns);
       connectionInfoFromRowPlusStatus.push('Connected');
       // connectionInfoFromRowPlusStatus.push(++numConnections);
       // connectionInfoFromRowPlusStatus.push(numDisconnections);
@@ -32,7 +32,7 @@ module.exports.parseLog = (dataStr, searchStrings, dataSearchPatterns) =>
     }
     else if(rawDataRows[i].indexOf(searchStrings.Disconnection) > -1)
     {
-      connectionInfoFromRowPlusStatus = parseConnectionInfo(rawDataRows[i + 1], dataSearchPatterns);
+      connectionInfoFromRowPlusStatus = parseConnectionInfo(rawDataRows[i + 1], connInfoSearchPatterns);
       connectionInfoFromRowPlusStatus.push('Disconnected');
       // connectionInfoFromRowPlusStatus.push(numConnections);
       // connectionInfoFromRowPlusStatus.push(++numDisconnections);
@@ -42,15 +42,15 @@ module.exports.parseLog = (dataStr, searchStrings, dataSearchPatterns) =>
   return connectionInfoFromAllRows;
 };
 
-function parseConnectionInfo(rowWithInfo, dataSearchPatterns)
+function parseConnectionInfo(rowWithInfo, connInfoSearchPatterns)
 {
   var connectionInfoFromRow = [];
-  dataSearchPatterns.forEach((dataSearchPattern) =>
+  connInfoSearchPatterns.forEach((connInfoSearchPattern) =>
   {
     // Parse out parameter values found after searchPattern
     // and create row of those values.
 
-    connectionInfoFromRow.push(sscanf(rowWithInfo, dataSearchPattern));
+    connectionInfoFromRow.push(sscanf(rowWithInfo, connInfoSearchPattern));
     // The first row contains the connection or
     // disconnection status. The second row contains the TraceID and other info.
   });

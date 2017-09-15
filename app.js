@@ -12,8 +12,15 @@ var docClient = new aws.DynamoDB.DocumentClient({ service: dynamodb });
 var params = {
   Bucket: 'connection-logs' /* required */};
 
-var searchStrings = { Connection: 'Connect Status: SUCCESS', Disconnection: 'Disconnect Status: SUCCESS' };
-var dataSearchPatterns = ['%s %s', 'TRACEID:%s', 'PRINCIPALID:%s', 'IpAddress: %s ', 'SourcePort: %s'];
+  var searchStrings =
+  {
+    Connection: 'Connect Status: SUCCESS',
+    Disconnection: 'Disconnect Status: SUCCESS',
+    PublishIn: 'PublishIn Status: SUCCESS',
+    PublishOut: 'PublishOut Status: SUCCESS'
+  };
+
+var connInfoSearchPatterns = ['%s %s', 'TRACEID:%s', 'PRINCIPALID:%s', 'IpAddress: %s ', 'SourcePort: %s'];
 var ConnectionsThisFile = []; // Clear array of Connections collected from last file
 var logFiles = [];
 var logFileNum = 0;
@@ -51,7 +58,7 @@ function readS3AndGetPutConnection(logFiles, logFileIndex)
     if (err) throw err;
     var logContents = fileContents.Body;
 
-    ConnectionsThisFile = utils.parseLog(logContents, searchStrings, dataSearchPatterns);
+    ConnectionsThisFile = utils.parseLog(logContents, searchStrings, connInfoSearchPatterns);
     getAndPutConnection(ConnectionsThisFile, 0);
   });
 }
