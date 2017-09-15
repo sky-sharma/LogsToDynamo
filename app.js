@@ -21,13 +21,13 @@ var params = {
   };
 
 var connInfoSearchPatterns = ['%s %s', 'TRACEID:%s', 'PRINCIPALID:%s', 'IpAddress: %s ', 'SourcePort: %s'];
+var topicSearchPattern = 'TOPICNAME:%s ';
+
 var ConnectionsThisFile = []; // Clear array of Connections collected from last file
 var logFiles = [];
 var logFileNum = 0;
 
-// var dataArray = [];
-// var AllConnections = [];
-// var Disconnections = [];
+var PrincipalID; // dBase Key field
 
 s3.listObjects(params, function(err, data)
 {
@@ -58,53 +58,109 @@ function readS3AndGetPutConnection(logFiles, logFileIndex)
     if (err) throw err;
     var logContents = fileContents.Body;
 
-    ConnectionsThisFile = utils.parseLog(logContents, searchStrings, connInfoSearchPatterns);
-    getAndPutConnection(ConnectionsThisFile, 0);
+    infoThisFile = utils.parseLog(logContents, searchStrings, connInfoSearchPatterns, topicSearchPattern);
+    getAndPutConnection(infoThisFile, 0);
   });
 }
 
 // Put IpAddresses of Connections in Connections table.
-function getAndPutConnection(Connections, ConnectionNum)
+function getAndPutConnection(infoForDbase, recordNum)
 {
   // Recursive function to make sure dBase read and write happen sequentially.
   // We read a record from the dBase, get the Number of Connections and Number of Disconnections
   // from the record and add to those.
 
-  if (ConnectionNum >= Connections.length)
+  var dBasePutParams =
+  {
+    TableName: 'Indie_Connections'
+  }
+
+  var dBaseGetParams =
+  {
+    TableName: 'Indie_Connections'
+  }
+
+  if (recordNum >= infoForDbase.length)
   {
     readS3AndGetPutConnection(logFiles, logFileNum++);
     return; // All done.
   }
 
-  Connection = Connections[ConnectionNum];
-  var PrincipalID = Connection[2];
-  var IpAddress = Connection[3];
-  var Status = Connection[5];
-  var LastConnDisconn = Connection[0][0] + ' ' + Connection[0][1];
-  // var TotalNumConnections = Connection[6];
-  // var TotalNumDisconnections = Connection[7];
+  currentRecord = infoForDbase[recordNum];
+  var recordContents = currentRecord.Contents;
 
-  var dBasePutParams =
+  if (recordContents === 'ConnInfo')
   {
-    TableName: 'Indie_Connections',
-    Item:
+    PrincipalID = currentRecord.ConnInfo[2];
+    var IpAddress = currentRecord.ConnInfo[3];
+    var Status = currentRecord.ConnInfo[5];
+    var LastConnDisconn = currentRecord.ConnInfo[0][0] + ' ' + currentRecord.ConnInfo[0][1];
+
+    dBaseGetParams.Key = { 'PrincipalID': PrincipalID };
+
+    dBasePutParams.Item =
     {
       'PrincipalID': PrincipalID,
-      'Last_IpAddress': IpAddress,
-      'Current_Status': Status, //Connected or Disconnected
-      'LastConnDisconn_Time': LastConnDisconn // Concatenating Date and Time
-      // 'TotalNumConnections': 0, // Will be updated by reading existing TotalNumConnections in dBase and incrementing
-      // 'TotalNumDisconnections': 0 // Will be updated by reading existing TotalNumDisconnections in dBase and incrementing
+      'LastIpAddress': IpAddress,
+      'CurrentStatus': Status, //Connected or Disconnected
+      'LastConnDisconnTime': LastConnDisconn, // Concatenating Date and Time
+      'TotalNumConnections': 0, // Placeholder
+      'TotalNumDisconnections': 0, // Placeholder
+      'PubInTopic': ' ', // Placeholder
+      'PubInTopicNumMsgs': 0, // Placeholder
+      'PubOutTopic': ' ', // Placeholder
+      'PubOutTopicNumMsgs': 0 // Placeholder
+    }
+  };
+
+  if (recordContents === 'PubInTopic')
+  {
+    var PubInTopicName = currentRecord.TopicName;
+    PrincipalID = currentRecord.TopicSubscriber[2];
+    var IpAddress = currentRecord.TopicSubscriber[3];
+    var Status = 'Connected'; //If a topic is being written, then device must be Connected
+    var LastConnDisconn = currentRecord.TopicSubscriber[0][0] + ' ' + currentRecord.TopicSubscriber[0][1];
+
+    dBaseGetParams.Key = { 'PrincipalID': PrincipalID };
+
+    dBasePutParams.Item =
+    {
+      'PrincipalID': PrincipalID,
+      'LastIpAddress': IpAddress,
+      'CurrentStatus': Status, //Connected or Disconnected
+      'LastConnDisconnTime': LastConnDisconn, // Concatenating Date and Time'PubInTopic': PubInTopicName
+      'TotalNumConnections': 0, // Placeholder
+      'TotalNumDisconnections': 0, // Placeholder
+      'PubInTopic': PubInTopicName,
+      'PubInTopicNumMsgs': 0, // Placeholder
+      'PubOutTopic': ' ', // Placeholder
+      'PubOutTopicNumMsgs': 0 // Placeholder
     }
   }
 
-  var dBaseGetParams =
+  if (recordContents === 'PubOutTopic')
   {
-    TableName: 'Indie_Connections',
-    Key:
-      {
-        'PrincipalID': PrincipalID
-      }
+    var PubOutTopicName = currentRecord.TopicName;
+    PrincipalID = currentRecord.TopicSubscriber[2];
+    var IpAddress = currentRecord.TopicSubscriber[3];
+    var Status = 'Connected'; //If a topic is being written, then device must be Connected
+    var LastConnDisconn = currentRecord.TopicSubscriber[0][0] + ' ' + currentRecord.TopicSubscriber[0][1];
+
+    dBaseGetParams.Key = { 'PrincipalID': PrincipalID };
+
+    dBasePutParams.Item =
+    {
+      'PrincipalID': PrincipalID,
+      'LastIpAddress': IpAddress,
+      'CurrentStatus': Status, //Connected or Disconnected
+      'LastConnDisconnTime': LastConnDisconn, // Concatenating Date and Time
+      'TotalNumConnections': 0, // Placeholder
+      'TotalNumDisconnections': 0, // Placeholder
+      'PubInTopic': ' ', // Placeholder
+      'PubInTopicNumMsgs': 0, // Placeholder
+      'PubOutTopic': PubOutTopicName,
+      'PubOutTopicNumMsgs': 0 // Placeholder
+    }
   }
 
   docClient.get(dBaseGetParams, (err, readRecord) =>
@@ -114,52 +170,101 @@ function getAndPutConnection(Connections, ConnectionNum)
     // The particular record is not found in the dBase, so enter it
     {
 
-      // If Status is Connected then take TotalNumConnections for this PrincipalID in dBase and increment
-      // If Status is Disonnected then take TotalNumDisconnections for this PrincipalID in dBase and decrement.
+      // If Status is Connected then set TotalNumConnections to 1 since this is first record
+      // If Status is Disonnected then set TotalNumDisconnections to 1 since this is first record
 
-      if (Status === 'Connected')
+      if (recordContents === 'ConnInfo')
       {
-        dBasePutParams.Item.TotalNumConnections = 1;
-        dBasePutParams.Item.TotalNumDisconnections = 0;
+        dBasePutParams.Item.PubInTopicNumMsgs = 0;
+        dBasePutParams.Item.PubOutTopicNumMsgs = 0;
+
+        if (Status === 'Connected')
+        {
+          dBasePutParams.Item.TotalNumConnections = 1;
+          dBasePutParams.Item.TotalNumDisconnections = 0;
+        }
+        else
+        {
+          dBasePutParams.Item.TotalNumConnections = 0;
+          dBasePutParams.Item.TotalNumDisconnections = 1;
+        }
       }
-      else
+
+      if (recordContents === 'PubInTopic')
       {
+        // Even though it makes sense that a connection must exist for topics to be written / read
+        // we are strictly updating TotalNumConnections only when explicitly receiving "Status Connect: SUCCESS".
+        // This will simplify things when we read from CloudWatch
+
         dBasePutParams.Item.TotalNumConnections = 0;
-        dBasePutParams.Item.TotalNumDisconnections = 1;
+        dBasePutParams.Item.TotalNumDisconnections = 0;
+        dBasePutParams.Item.PubInTopicNumMsgs = 1;
+        dBasePutParams.Item.PubOutTopicNumMsgs = 0;
+      }
+
+      if (recordContents === 'PubOutTopic')
+      {
+        // Even though it makes sense that a connection must exist for topics to be written / read
+        // we are strictly updating TotalNumConnections only when explicitly receiving "Status Connect: SUCCESS".
+        // This will simplify things when we read from CloudWatch
+
+        dBasePutParams.Item.TotalNumConnections = 0;
+        dBasePutParams.Item.TotalNumDisconnections = 0;
+        dBasePutParams.Item.PubInTopicNumMsgs = 0;
+        dBasePutParams.Item.PubOutTopicNumMsgs = 1;
       }
 
       docClient.put(dBasePutParams, (err, data) =>
       {
+        console.log('Entering for first time: ', dBasePutParams);
         if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
         else
         {
-          getAndPutConnection(Connections, ConnectionNum + 1); // This function calls itself recursively
+          getAndPutConnection(infoForDbase, recordNum + 1); // This function calls itself recursively
         }
       });
     }
 
     else
     {
+      // First read TotalNumConnections, TotalNumDisconnections, PubInTopicNumMsgs and PubOutTopicNumMsgs.
+      // The appropriate ones will be incremented as needed.
+      dBasePutParams.Item.TotalNumConnections = readRecord.Item.TotalNumConnections;
+      dBasePutParams.Item.TotalNumDisconnections = readRecord.Item.TotalNumDisconnections;
+      dBasePutParams.Item.PubInTopicNumMsgs = readRecord.Item.PubInTopicNumMsgs;
+      dBasePutParams.Item.PubOutTopicNumMsgs = readRecord.Item.PubOutTopicNumMsgs;
+
       // If Status is Connected then take TotalNumConnections for this PrincipalID in dBase and increment
       // If Status is Disonnected then take TotalNumDisconnections for this PrincipalID in dBase and decrement.
-
-      if (Status === 'Connected')
+      if (recordContents === 'ConnInfo')
       {
-        dBasePutParams.Item.TotalNumConnections = readRecord.Item.TotalNumConnections + 1;
-        dBasePutParams.Item.TotalNumDisconnections = readRecord.Item.TotalNumDisconnections;
+        if (Status === 'Connected')
+        {
+          dBasePutParams.Item.TotalNumConnections++;
+        }
+        else
+        {
+          dBasePutParams.Item.TotalNumDisconnections++;
+        }
       }
-      else
+
+      else if (recordContents === 'PubInTopic')
       {
-        dBasePutParams.Item.TotalNumConnections = readRecord.Item.TotalNumConnections;
-        dBasePutParams.Item.TotalNumDisconnections = readRecord.Item.TotalNumDisconnections + 1;
+        dBasePutParams.Item.PubInTopicNumMsgs++;
+      }
+
+      else if (recordContents === 'PubOutTopic')
+      {
+        dBasePutParams.Item.PubOutTopicNumMsgs++;
       }
 
       docClient.put(dBasePutParams, (err, data) =>
       {
+        console.log('Adding to existing: ', dBasePutParams);
         if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
         else
         {
-          getAndPutConnection(Connections, ConnectionNum + 1); // This function calls itself recursively
+          getAndPutConnection(infoForDbase, recordNum + 1); // This function calls itself recursively
         }
       });
     }

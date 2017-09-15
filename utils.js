@@ -3,9 +3,9 @@ const sscanf = require('scanf').sscanf;
 var rawDataRows = [];
 var connectionInfoFromRow = []; //1D array of connection info. from 1 row
 var connectionInfoFromRowPlusStatus = []; //1D array of connection info. rom 1 row along with String indicating connection status
-var connectionInfoFromAllRows = []; //2D Array of connection info. from all rows
+var infoFromAllRows = []; //2D Array of connection info. from all rows
 
-module.exports.parseLog = (dataStr, searchStrings, connInfoSearchPatterns) =>
+module.exports.parseLog = (dataStr, searchStrings, connInfoSearchPatterns, topicSearchPattern) =>
 {
   // Receives a string from a Monitor Log file,looks for searchString,
   // and returns the items defined by searchPatterns.
@@ -28,7 +28,7 @@ module.exports.parseLog = (dataStr, searchStrings, connInfoSearchPatterns) =>
       connectionInfoFromRowPlusStatus.push('Connected');
       // connectionInfoFromRowPlusStatus.push(++numConnections);
       // connectionInfoFromRowPlusStatus.push(numDisconnections);
-      connectionInfoFromAllRows.push(connectionInfoFromRowPlusStatus);
+      infoFromAllRows.push({Contents: 'ConnInfo', ConnInfo: connectionInfoFromRowPlusStatus});
     }
     else if(rawDataRows[i].indexOf(searchStrings.Disconnection) > -1)
     {
@@ -36,10 +36,27 @@ module.exports.parseLog = (dataStr, searchStrings, connInfoSearchPatterns) =>
       connectionInfoFromRowPlusStatus.push('Disconnected');
       // connectionInfoFromRowPlusStatus.push(numConnections);
       // connectionInfoFromRowPlusStatus.push(++numDisconnections);
-      connectionInfoFromAllRows.push(connectionInfoFromRowPlusStatus);
+      infoFromAllRows.push({Contents: 'ConnInfo', ConnInfo: connectionInfoFromRowPlusStatus});
+    }
+    else if(rawDataRows[i].indexOf(searchStrings.PublishIn) > -1)
+    {
+      infoFromAllRows.push(
+        {
+          Contents: 'PubInTopic',
+          TopicName: sscanf(rawDataRows[i], topicSearchPattern),
+          TopicSubscriber: parseConnectionInfo(rawDataRows[i + 1], connInfoSearchPatterns)
+        });
+    }
+    else if(rawDataRows[i].indexOf(searchStrings.PublishOut) > -1)
+    {
+      infoFromAllRows.push({
+        Contents: 'PubOutTopic',
+        TopicName: sscanf(rawDataRows[i], topicSearchPattern),
+        TopicSubscriber: parseConnectionInfo(rawDataRows[i + 1], connInfoSearchPatterns)
+      });
     }
   };
-  return connectionInfoFromAllRows;
+  return infoFromAllRows;
 };
 
 function parseConnectionInfo(rowWithInfo, connInfoSearchPatterns)
