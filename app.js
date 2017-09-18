@@ -23,7 +23,7 @@ var params = {
 var connInfoSearchPatterns = ['%s %s', 'TRACEID:%s', 'PRINCIPALID:%s', 'IpAddress: %s ', 'SourcePort: %s'];
 var topicSearchPattern = 'TOPICNAME:%s ';
 
-var ConnectionsThisFile = []; // Clear array of Connections collected from last file
+var infoThisFile = []; // Clear array of Connections collected from last file
 var logFiles = [];
 var logFileNum = 0;
 
@@ -35,6 +35,7 @@ s3.listObjects(params, function(err, data)
   else
   {
     logFiles = data.Contents;
+    // console.log(logFiles);
     readS3AndGetPutConnection(logFiles, logFileNum++);
 }});
 
@@ -47,9 +48,13 @@ function readS3AndGetPutConnection(logFiles, logFileIndex)
   if (logFileIndex >= logFiles.length) return; // All done
 
   console.log('logFileIndex: ', logFileIndex);
+  // console.log('logFiles: ', logFiles);
 
   var logFileName = logFiles[logFileIndex].Key;
+  // console.log('logFile: ', logFileName);
+
   params.Key = logFileName;
+  // console.log(params);
   // Get Log File Name
 
   s3.getObject((params), (err, fileContents) =>
@@ -103,13 +108,13 @@ function getAndPutConnection(infoForDbase, recordNum)
       'PrincipalID': PrincipalID,
       'LastIpAddress': IpAddress,
       'CurrentStatus': Status, //Connected or Disconnected
-      'LastConnDisconnTime': LastConnDisconn, // Concatenating Date and Time
-      'TotalNumConnections': 0, // Placeholder
-      'TotalNumDisconnections': 0, // Placeholder
-      'PubInTopic': ' ', // Placeholder
-      'PubInTopicNumMsgs': 0, // Placeholder
-      'PubOutTopic': ' ', // Placeholder
-      'PubOutTopicNumMsgs': 0 // Placeholder
+      'LastConnDisconnTime': LastConnDisconn // Concatenating Date and Time
+      // 'TotalNumConnections': 0, // Placeholder
+      // 'TotalNumDisconnections': 0, // Placeholder
+      // 'PubInTopic': ' ', // Placeholder
+      // 'PubInTopicNumMsgs': 0, // Placeholder
+      // 'PubOutTopic': ' ', // Placeholder
+      // 'PubOutTopicNumMsgs': 0 // Placeholder
     }
   };
 
@@ -118,7 +123,12 @@ function getAndPutConnection(infoForDbase, recordNum)
     var PubInTopicName = currentRecord.TopicName;
     PrincipalID = currentRecord.TopicSubscriber[2];
     var IpAddress = currentRecord.TopicSubscriber[3];
-    var Status = 'Connected'; //If a topic is being written, then device must be Connected
+    // Normally, if a topic is being written, then we
+    // should consider the device to be Connected.
+    // However in this case we are ONLY considering
+    // a device conneted when the following is received:
+    // "Connect Status: SUCCESS"
+    var Status = currentRecord.TopicSubscriber[5];
     var LastConnDisconn = currentRecord.TopicSubscriber[0][0] + ' ' + currentRecord.TopicSubscriber[0][1];
 
     dBaseGetParams.Key = { 'PrincipalID': PrincipalID };
@@ -128,13 +138,13 @@ function getAndPutConnection(infoForDbase, recordNum)
       'PrincipalID': PrincipalID,
       'LastIpAddress': IpAddress,
       'CurrentStatus': Status, //Connected or Disconnected
-      'LastConnDisconnTime': LastConnDisconn, // Concatenating Date and Time'PubInTopic': PubInTopicName
-      'TotalNumConnections': 0, // Placeholder
-      'TotalNumDisconnections': 0, // Placeholder
-      'PubInTopic': PubInTopicName,
-      'PubInTopicNumMsgs': 0, // Placeholder
-      'PubOutTopic': ' ', // Placeholder
-      'PubOutTopicNumMsgs': 0 // Placeholder
+      'LastConnDisconnTime': LastConnDisconn // Concatenating Date and Time
+      // 'TotalNumConnections': 0, // Placeholder
+      // 'TotalNumDisconnections': 0, // Placeholder
+      // 'PubInTopic': PubInTopicName,
+      // 'PubInTopicNumMsgs': 0, // Placeholder
+      // 'PubOutTopic': ' ', // Placeholder
+      // 'PubOutTopicNumMsgs': 0 // Placeholder
     }
   }
 
@@ -143,7 +153,12 @@ function getAndPutConnection(infoForDbase, recordNum)
     var PubOutTopicName = currentRecord.TopicName;
     PrincipalID = currentRecord.TopicSubscriber[2];
     var IpAddress = currentRecord.TopicSubscriber[3];
-    var Status = 'Connected'; //If a topic is being written, then device must be Connected
+    // Normally, if a topic is being written, then we
+    // should consider the device to be Connected.
+    // However in this case we are ONLY considering
+    // a device conneted when the following is received:
+    // "Connect Status: SUCCESS"
+    var Status = currentRecord.TopicSubscriber[5];
     var LastConnDisconn = currentRecord.TopicSubscriber[0][0] + ' ' + currentRecord.TopicSubscriber[0][1];
 
     dBaseGetParams.Key = { 'PrincipalID': PrincipalID };
@@ -153,13 +168,13 @@ function getAndPutConnection(infoForDbase, recordNum)
       'PrincipalID': PrincipalID,
       'LastIpAddress': IpAddress,
       'CurrentStatus': Status, //Connected or Disconnected
-      'LastConnDisconnTime': LastConnDisconn, // Concatenating Date and Time
-      'TotalNumConnections': 0, // Placeholder
-      'TotalNumDisconnections': 0, // Placeholder
-      'PubInTopic': ' ', // Placeholder
-      'PubInTopicNumMsgs': 0, // Placeholder
-      'PubOutTopic': PubOutTopicName,
-      'PubOutTopicNumMsgs': 0 // Placeholder
+      'LastConnDisconnTime': LastConnDisconn // Concatenating Date and Time
+      // 'TotalNumConnections': 0, // Placeholder
+      // 'TotalNumDisconnections': 0, // Placeholder
+      // 'PubInTopic': ' ', // Placeholder
+      // 'PubInTopicNumMsgs': 0, // Placeholder
+      // 'PubOutTopic': PubOutTopicName,
+      // 'PubOutTopicNumMsgs': 0 // Placeholder
     }
   }
 
@@ -180,10 +195,11 @@ function getAndPutConnection(infoForDbase, recordNum)
 
         if (Status === 'Connected')
         {
+          debugger;
           dBasePutParams.Item.TotalNumConnections = 1;
           dBasePutParams.Item.TotalNumDisconnections = 0;
         }
-        else
+        else if (Status === 'Disconnected')
         {
           dBasePutParams.Item.TotalNumConnections = 0;
           dBasePutParams.Item.TotalNumDisconnections = 1;
@@ -216,7 +232,7 @@ function getAndPutConnection(infoForDbase, recordNum)
 
       docClient.put(dBasePutParams, (err, data) =>
       {
-        console.log('Entering for first time: ', dBasePutParams);
+        // console.log('Entering for first time: ', dBasePutParams);
         if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
         else
         {
@@ -234,33 +250,36 @@ function getAndPutConnection(infoForDbase, recordNum)
       dBasePutParams.Item.PubInTopicNumMsgs = readRecord.Item.PubInTopicNumMsgs;
       dBasePutParams.Item.PubOutTopicNumMsgs = readRecord.Item.PubOutTopicNumMsgs;
 
+      // If no Status info. in recently parsed record, use the last Status from dBase.
+      if (dBasePutParams.Item.CurrentStatus == undefined) dBasePutParams.Item.CurrentStatus = readRecord.Item.CurrentStatus;
+
       // If Status is Connected then take TotalNumConnections for this PrincipalID in dBase and increment
       // If Status is Disonnected then take TotalNumDisconnections for this PrincipalID in dBase and decrement.
       if (recordContents === 'ConnInfo')
       {
         if (Status === 'Connected')
         {
-          dBasePutParams.Item.TotalNumConnections++;
+          (dBasePutParams.Item.TotalNumConnections)++;
         }
         else
         {
-          dBasePutParams.Item.TotalNumDisconnections++;
+          (dBasePutParams.Item.TotalNumDisconnections)++;
         }
       }
 
       else if (recordContents === 'PubInTopic')
       {
-        dBasePutParams.Item.PubInTopicNumMsgs++;
+        (dBasePutParams.Item.PubInTopicNumMsgs)++;
       }
 
       else if (recordContents === 'PubOutTopic')
       {
-        dBasePutParams.Item.PubOutTopicNumMsgs++;
+        (dBasePutParams.Item.PubOutTopicNumMsgs)++;
       }
 
       docClient.put(dBasePutParams, (err, data) =>
       {
-        console.log('Adding to existing: ', dBasePutParams);
+        // console.log('Adding to existing: ', dBasePutParams);
         if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
         else
         {

@@ -12,7 +12,7 @@ module.exports.parseLog = (dataStr, searchStrings, connInfoSearchPatterns, topic
 
   var numConnections = 0;
   var numDisconnections = 0;
-  connectionInfoFromAllRows = [];
+  infoFromAllRows = [];
 
   rawDataRows = dataStr.toString().split('\n');
 
