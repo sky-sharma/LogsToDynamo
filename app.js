@@ -3,8 +3,11 @@ const path = require('path');
 const utils = require('./utils.js');
 const aws = require('aws-sdk');
 
+//globally
+aws.config.paramValidation = false;
+
 var s3 = new aws.S3();
-var dynamodb = new aws.DynamoDB({ region: 'us-west-2' });
+var dynamodb = new aws.DynamoDB({ region: 'us-west-2', apiVersion: '2012-08-10' });
 var docClient = new aws.DynamoDB.DocumentClient({ service: dynamodb });
 
 //aws.config.update({ endpoint: 'https://s3.us-west-2.amazonaws.com' });
