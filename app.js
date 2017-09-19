@@ -117,20 +117,20 @@ function getAndPutConnection(infoForDbase, recordNum)
       // 'PubOutTopic': ' ', // Placeholder
       // 'PubOutTopicNumMsgs': 0 // Placeholder
     }
-  };
+  }
 
   if (recordContents === 'PubInTopic')
   {
     var PubInTopicName = currentRecord.TopicName;
     PrincipalID = currentRecord.TopicSubscriber[2];
-    var IpAddress = currentRecord.TopicSubscriber[3];
+    IpAddress = currentRecord.TopicSubscriber[3];
     // Normally, if a topic is being written, then we
     // should consider the device to be Connected.
     // However in this case we are ONLY considering
     // a device conneted when the following is received:
     // "Connect Status: SUCCESS"
-    var Status = currentRecord.TopicSubscriber[5];
-    var LastConnDisconn = currentRecord.TopicSubscriber[0][0] + ' ' + currentRecord.TopicSubscriber[0][1];
+    Status = currentRecord.TopicSubscriber[5];
+    LastConnDisconn = currentRecord.TopicSubscriber[0][0] + ' ' + currentRecord.TopicSubscriber[0][1];
     PubInTopicNumMsgs = `PubIn: ${PubInTopicName}`; // Use Template string to create field name rather than field value.
 
     dBaseGetParams.Key = { 'PrincipalID': PrincipalID };
@@ -148,14 +148,14 @@ function getAndPutConnection(infoForDbase, recordNum)
   {
     var PubOutTopicName = currentRecord.TopicName;
     PrincipalID = currentRecord.TopicSubscriber[2];
-    var IpAddress = currentRecord.TopicSubscriber[3];
+    IpAddress = currentRecord.TopicSubscriber[3];
     // Normally, if a topic is being written, then we
     // should consider the device to be Connected.
     // However in this case we are ONLY considering
     // a device conneted when the following is received:
     // "Connect Status: SUCCESS"
-    var Status = currentRecord.TopicSubscriber[5];
-    var LastConnDisconn = currentRecord.TopicSubscriber[0][0] + ' ' + currentRecord.TopicSubscriber[0][1];
+    Status = currentRecord.TopicSubscriber[5];
+    LastConnDisconn = currentRecord.TopicSubscriber[0][0] + ' ' + currentRecord.TopicSubscriber[0][1];
     PubOutTopicNumMsgs = `PubOut: ${PubOutTopicName}`; // Use Template string to create field name rather than field value.
 
     dBaseGetParams.Key = { 'PrincipalID': PrincipalID };
@@ -234,7 +234,7 @@ function getAndPutConnection(infoForDbase, recordNum)
       readRecord.Item.TotalNumDisconnections ? (dBasePutParams.Item.TotalNumDisconnections = readRecord.Item.TotalNumDisconnections) : (dBasePutParams.Item.TotalNumDisconnections = 0);
 
       // If no Status info. in recently parsed record, use the last Status from dBase.
-      if (dBasePutParams.Item.CurrentStatus == undefined) dBasePutParams.Item.CurrentStatus = readRecord.Item.CurrentStatus;
+      if (dBasePutParams.Item.CurrentStatus === undefined) dBasePutParams.Item.CurrentStatus = readRecord.Item.CurrentStatus;
 
       // If Status is Connected then take TotalNumConnections for this PrincipalID in dBase and increment
       // If Status is Disonnected then take TotalNumDisconnections for this PrincipalID in dBase and decrement.
