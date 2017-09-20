@@ -33,6 +33,7 @@ var logFileNum = 0;
 var PrincipalID; // dBase Key field
 var PubInTopicNumMsgs = '';
 var PubOutTopicNumMsgs = '';
+var SubscribeTopicName = '';
 
 s3.listObjects(params, function(err, data)
 {
@@ -123,6 +124,31 @@ function getAndPutConnection(infoForDbase, recordNum)
     }
   }
 
+  if (recordContents === 'SubscribeTopic')
+  {
+    console.log('recordContents: ', recordContents);
+    var SubscribeTopicName = currentRecord.TopicName;
+    PrincipalID = currentRecord.TopicSubscriber[2];
+    IpAddress = currentRecord.TopicSubscriber[3];
+    // Normally, if a topic is being written, then we
+    // should consider the device to be Connected.
+    // However in this case we are ONLY considering
+    // a device conneted when the following is received:
+    // "Connect Status: SUCCESS"
+    Status = currentRecord.TopicSubscriber[5];
+    LastConnDisconn = currentRecord.TopicSubscriber[0][0] + ' ' + currentRecord.TopicSubscriber[0][1];
+
+    dBaseGetParams.Key = { 'PrincipalID': PrincipalID };
+
+    dBasePutParams.Item =
+    {
+      'PrincipalID': PrincipalID,
+      'LastIpAddress': IpAddress,
+      'CurrentStatus': Status, //Connected or Disconnected
+      'LastConnDisconnTime': LastConnDisconn // Concatenating Date and Time
+    }
+  }
+
   if (recordContents === 'PubInTopic')
   {
     var PubInTopicName = currentRecord.TopicName;
@@ -208,6 +234,11 @@ function getAndPutConnection(infoForDbase, recordNum)
           dBasePutParams.Item[PubInTopicNumMsgs] = 1;
       }
 
+      if (recordContents === 'SubscribeTopic')
+      {
+        console.log('dBasePutParams: ', dBasePutParams);
+      }
+
       if (recordContents === 'PubOutTopic')
       {
         // Even though it makes sense that a connection must exist for topics to be written / read
@@ -256,7 +287,7 @@ function getAndPutConnection(infoForDbase, recordNum)
 
       else if (recordContents === 'Subscribe')
       {
-        console.log('readRecord: ', readRecord.Item);
+        dBasePutParams.Item[PubInTopicNumMsgs].SubscriptionState = 'Subscribed';
       }
 
       else if (recordContents === 'PubInTopic')
