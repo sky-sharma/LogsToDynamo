@@ -47,6 +47,15 @@ module.exports.parseLog = (dataStr, searchStrings, connInfoSearchPatterns, topic
           TopicSubscriber: parseConnectionInfo(rawDataRows[i + 1], connInfoSearchPatterns)
         });
     }
+    else if(rawDataRows[i].indexOf(searchStrings.Subscribe) > -1)
+    {
+      infoFromAllRows.push(
+        {
+          Contents: 'SubscribeTopic',
+          TopicName: sscanf(rawDataRows[i], topicSearchPattern),
+          TopicSubscriber: parseConnectionInfo(rawDataRows[i + 1], connInfoSearchPatterns)
+        });
+    }
     else if(rawDataRows[i].indexOf(searchStrings.PublishOut) > -1)
     {
       infoFromAllRows.push({

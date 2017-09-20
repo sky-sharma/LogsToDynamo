@@ -20,7 +20,8 @@ var params = {
     Connection: 'Connect Status: SUCCESS',
     Disconnection: 'Disconnect Status: SUCCESS',
     PublishIn: 'PublishIn Status: SUCCESS',
-    PublishOut: 'PublishOut Status: SUCCESS'
+    PublishOut: 'PublishOut Status: SUCCESS',
+    Subscribe: 'Subscribe Status: SUCCESS'
   };
 
 var connInfoSearchPatterns = ['%s %s', 'TRACEID:%s', 'PRINCIPALID:%s', 'IpAddress: %s ', 'SourcePort: %s'];
@@ -251,6 +252,11 @@ function getAndPutConnection(infoForDbase, recordNum)
         {
           (dBasePutParams.Item.TotalNumDisconnections)++;
         }
+      }
+
+      else if (recordContents === 'Subscribe')
+      {
+        console.log('readRecord: ', readRecord.Item);
       }
 
       else if (recordContents === 'PubInTopic')
