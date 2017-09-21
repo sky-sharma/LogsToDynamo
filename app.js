@@ -135,7 +135,7 @@ function getAndPutConnection(infoForDbase, recordNum)
     // a device conneted when the following is received:
     // "Connect Status: SUCCESS"
     Status = currentRecord.TopicSubscriber[5];
-    LastConnDisconn = currentRecord.TopicSubscriber[0][0] + ' ' + currentRecord.TopicSubscriber[0][1];
+    // LastConnDisconn = currentRecord.TopicSubscriber[0][0] + ' ' + currentRecord.TopicSubscriber[0][1];
 
     dBaseGetParams.Key = { 'PrincipalID': PrincipalID };
 
@@ -143,8 +143,8 @@ function getAndPutConnection(infoForDbase, recordNum)
     {
       'PrincipalID': PrincipalID,
       'LastIpAddress': IpAddress,
-      'CurrentStatus': Status, //Connected or Disconnected
-      'LastConnDisconnTime': LastConnDisconn // Concatenating Date and Time
+      'CurrentStatus': Status //Connected or Disconnected
+      // 'LastConnDisconnTime': LastConnDisconn // Concatenating Date and Time
     }
   }
 
@@ -159,7 +159,7 @@ function getAndPutConnection(infoForDbase, recordNum)
     // a device conneted when the following is received:
     // "Connect Status: SUCCESS"
     Status = currentRecord.TopicSubscriber[5];
-    LastConnDisconn = currentRecord.TopicSubscriber[0][0] + ' ' + currentRecord.TopicSubscriber[0][1];
+    // LastConnDisconn = currentRecord.TopicSubscriber[0][0] + ' ' + currentRecord.TopicSubscriber[0][1];
     //PubInTopicInfo = `${PubInTopicName}`; // Use Template string to create field name rather than field value.
 
     dBaseGetParams.Key = { 'PrincipalID': PrincipalID };
@@ -168,8 +168,8 @@ function getAndPutConnection(infoForDbase, recordNum)
     {
       'PrincipalID': PrincipalID,
       'LastIpAddress': IpAddress,
-      'CurrentStatus': Status, //Connected or Disconnected
-      'LastConnDisconnTime': LastConnDisconn // Concatenating Date and Time
+      'CurrentStatus': Status //Connected or Disconnected
+      // 'LastConnDisconnTime': LastConnDisconn // Concatenating Date and Time
     }
   }
 
@@ -184,7 +184,7 @@ function getAndPutConnection(infoForDbase, recordNum)
     // a device conneted when the following is received:
     // "Connect Status: SUCCESS"
     Status = currentRecord.TopicSubscriber[5];
-    LastConnDisconn = currentRecord.TopicSubscriber[0][0] + ' ' + currentRecord.TopicSubscriber[0][1];
+    // LastConnDisconn = currentRecord.TopicSubscriber[0][0] + ' ' + currentRecord.TopicSubscriber[0][1];
     //PubOutTopicInfo = `${PubOutTopicName}`; // Use Template string to create field name rather than field value.
 
     dBaseGetParams.Key = { 'PrincipalID': PrincipalID };
@@ -193,8 +193,8 @@ function getAndPutConnection(infoForDbase, recordNum)
     {
       'PrincipalID': PrincipalID,
       'LastIpAddress': IpAddress,
-      'CurrentStatus': Status, //Connected or Disconnected
-      'LastConnDisconnTime': LastConnDisconn // Concatenating Date and Time
+      'CurrentStatus': Status //Connected or Disconnected
+      // 'LastConnDisconnTime': LastConnDisconn // Concatenating Date and Time
     }
   }
 
