@@ -31,9 +31,9 @@ var infoThisFile = []; // Clear array of Connections collected from last file
 var logFiles = [];
 var logFileNum = 0;
 var PrincipalID; // dBase Key field
-var PubInTopicNumMsgs = '';
-var PubOutTopicNumMsgs = '';
-var SubscribeTopicName = '';
+var PubInTopicInfo = '';
+var PubOutTopicInfo = '';
+var SubscribeTopicInfo = '';
 
 s3.listObjects(params, function(err, data)
 {
@@ -126,8 +126,7 @@ function getAndPutConnection(infoForDbase, recordNum)
 
   if (recordContents === 'SubscribeTopic')
   {
-    console.log('recordContents: ', recordContents);
-    var SubscribeTopicName = currentRecord.TopicName;
+    var SubscribeTopicInfo = currentRecord.TopicName;
     PrincipalID = currentRecord.TopicSubscriber[2];
     IpAddress = currentRecord.TopicSubscriber[3];
     // Normally, if a topic is being written, then we
@@ -151,7 +150,7 @@ function getAndPutConnection(infoForDbase, recordNum)
 
   if (recordContents === 'PubInTopic')
   {
-    var PubInTopicName = currentRecord.TopicName;
+    var PubInTopicInfo = currentRecord.TopicName;
     PrincipalID = currentRecord.TopicSubscriber[2];
     IpAddress = currentRecord.TopicSubscriber[3];
     // Normally, if a topic is being written, then we
@@ -161,7 +160,7 @@ function getAndPutConnection(infoForDbase, recordNum)
     // "Connect Status: SUCCESS"
     Status = currentRecord.TopicSubscriber[5];
     LastConnDisconn = currentRecord.TopicSubscriber[0][0] + ' ' + currentRecord.TopicSubscriber[0][1];
-    PubInTopicNumMsgs = `PubIn: ${PubInTopicName}`; // Use Template string to create field name rather than field value.
+    //PubInTopicInfo = `${PubInTopicName}`; // Use Template string to create field name rather than field value.
 
     dBaseGetParams.Key = { 'PrincipalID': PrincipalID };
 
@@ -176,7 +175,7 @@ function getAndPutConnection(infoForDbase, recordNum)
 
   if (recordContents === 'PubOutTopic')
   {
-    var PubOutTopicName = currentRecord.TopicName;
+    var PubOutTopicInfo = currentRecord.TopicName;
     PrincipalID = currentRecord.TopicSubscriber[2];
     IpAddress = currentRecord.TopicSubscriber[3];
     // Normally, if a topic is being written, then we
@@ -186,7 +185,7 @@ function getAndPutConnection(infoForDbase, recordNum)
     // "Connect Status: SUCCESS"
     Status = currentRecord.TopicSubscriber[5];
     LastConnDisconn = currentRecord.TopicSubscriber[0][0] + ' ' + currentRecord.TopicSubscriber[0][1];
-    PubOutTopicNumMsgs = `PubOut: ${PubOutTopicName}`; // Use Template string to create field name rather than field value.
+    //PubOutTopicInfo = `${PubOutTopicName}`; // Use Template string to create field name rather than field value.
 
     dBaseGetParams.Key = { 'PrincipalID': PrincipalID };
 
@@ -225,18 +224,24 @@ function getAndPutConnection(infoForDbase, recordNum)
         }
       }
 
+      if (recordContents === 'SubscribeTopic')
+      {
+        // Even though it makes sense that a connection must exist for topics to be written / read
+        // we are strictly updating TotalNumConnections only when explicitly receiving "Status Connect: SUCCESS".
+        // This will simplify things when we read from CloudWatch
+
+        console.log('dBasePutParams: ', dBasePutParams);
+
+        dBasePutParams.Item[SubscribeTopicInfo] = { 'Status': 'Subscribed' };
+      }
+
       if (recordContents === 'PubInTopic')
       {
         // Even though it makes sense that a connection must exist for topics to be written / read
         // we are strictly updating TotalNumConnections only when explicitly receiving "Status Connect: SUCCESS".
         // This will simplify things when we read from CloudWatch
 
-          dBasePutParams.Item[PubInTopicNumMsgs] = 1;
-      }
-
-      if (recordContents === 'SubscribeTopic')
-      {
-        console.log('dBasePutParams: ', dBasePutParams);
+          dBasePutParams.Item[PubInTopicInfo] = { '#PubInMsgs': 1 };
       }
 
       if (recordContents === 'PubOutTopic')
@@ -245,13 +250,13 @@ function getAndPutConnection(infoForDbase, recordNum)
         // we are strictly updating TotalNumConnections only when explicitly receiving "Status Connect: SUCCESS".
         // This will simplify things when we read from CloudWatch
 
-          dBasePutParams.Item[PubOutTopicNumMsgs] = 1;
+          dBasePutParams.Item[PubOutTopicInfo] = { '#PubOutMsgs': 1 };
       }
 
       docClient.put(dBasePutParams, (err, data) =>
       {
         // console.log('Entering for first time: ', dBasePutParams);
-        if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
+        if (err) console.error('Unable to add new item. Error JSON:', JSON.stringify(err, null, 2));
         else
         {
           getAndPutConnection(infoForDbase, recordNum + 1); // This function calls itself recursively
@@ -265,8 +270,10 @@ function getAndPutConnection(infoForDbase, recordNum)
       // The appropriate ones will be incremented as needed.
       // If those fields are not present set them to 0.
 
-      readRecord.Item.TotalNumConnections ? (dBasePutParams.Item.TotalNumConnections = readRecord.Item.TotalNumConnections) : (dBasePutParams.Item.TotalNumConnections = 0);
-      readRecord.Item.TotalNumDisconnections ? (dBasePutParams.Item.TotalNumDisconnections = readRecord.Item.TotalNumDisconnections) : (dBasePutParams.Item.TotalNumDisconnections = 0);
+      readRecord.Item.TotalNumConnections ? (dBasePutParams.Item.TotalNumConnections =
+        readRecord.Item.TotalNumConnections) : (dBasePutParams.Item.TotalNumConnections = 0);
+      readRecord.Item.TotalNumDisconnections ? (dBasePutParams.Item.TotalNumDisconnections =
+        readRecord.Item.TotalNumDisconnections) : (dBasePutParams.Item.TotalNumDisconnections = 0);
 
       // If no Status info. in recently parsed record, use the last Status from dBase.
       if (dBasePutParams.Item.CurrentStatus === undefined) dBasePutParams.Item.CurrentStatus = readRecord.Item.CurrentStatus;
@@ -285,21 +292,35 @@ function getAndPutConnection(infoForDbase, recordNum)
         }
       }
 
-      else if (recordContents === 'Subscribe')
+      else if (recordContents === 'SubscribeTopic')
       {
-        dBasePutParams.Item[PubInTopicNumMsgs].SubscriptionState = 'Subscribed';
+        readRecord.Item[SubscribeTopicInfo] ?
+        (dBasePutParams.Item[SubscribeTopicInfo] = readRecord.Item[SubscribeTopicInfo]) :
+        (dBasePutParams.Item[SubscribeTopicInfo] = { 'Status': 'Subscribed' });
+
+          dBasePutParams.Item[SubscribeTopicInfo].Status = 'Subscribed';
       }
 
       else if (recordContents === 'PubInTopic')
       {
-        readRecord.Item[PubInTopicNumMsgs] ? (dBasePutParams.Item[PubInTopicNumMsgs] = readRecord.Item[PubInTopicNumMsgs]) : (dBasePutParams.Item[PubInTopicNumMsgs] = 0);
-        (dBasePutParams.Item[PubInTopicNumMsgs])++;
+        readRecord.Item[PubInTopicInfo] ?
+        (dBasePutParams.Item[PubInTopicInfo] = readRecord.Item[PubInTopicInfo]) :
+        (dBasePutParams.Item[PubInTopicInfo] = { '#PubInMsgs': 0 });
+
+        if ((dBasePutParams.Item[PubInTopicInfo]['#PubInMsgs'] === NaN) || (dBasePutParams.Item[PubInTopicInfo]['#PubInMsgs'] === undefined))
+        dBasePutParams.Item[PubInTopicInfo]['#PubInMsgs'] = 0;
+        (dBasePutParams.Item[PubInTopicInfo]['#PubInMsgs'])++;
       }
 
       else if (recordContents === 'PubOutTopic')
       {
-        readRecord.Item[PubOutTopicNumMsgs] ? (dBasePutParams.Item[PubOutTopicNumMsgs] = readRecord.Item[PubOutTopicNumMsgs]) : (dBasePutParams.Item[PubOutTopicNumMsgs] = 0);
-        (dBasePutParams.Item[PubOutTopicNumMsgs])++;
+        readRecord.Item[PubOutTopicInfo] ?
+        (dBasePutParams.Item[PubOutTopicInfo] = readRecord.Item[PubOutTopicInfo]) :
+        (dBasePutParams.Item[PubOutTopicInfo] = { '#PubOutMsgs': 0 });
+
+        if ((dBasePutParams.Item[PubOutTopicInfo]['#PubOutMsgs'] === NaN) || (dBasePutParams.Item[PubOutTopicInfo]['#PubOutMsgs'] === undefined))
+        dBasePutParams.Item[PubOutTopicInfo]['#PubOutMsgs'] = 0;
+        (dBasePutParams.Item[PubOutTopicInfo]['#PubOutMsgs'])++;
       }
 
       // Missing fields from readRecord are the ones added using dBasePutParams
@@ -307,12 +328,11 @@ function getAndPutConnection(infoForDbase, recordNum)
       newRecord.Item = Object.assign({}, readRecord.Item, dBasePutParams.Item);
       newRecord.TableName = dBasePutParams.TableName;
 
-      // console.log(newRecord);
-
       docClient.put((newRecord), (err, data) =>
       {
         // console.log('Adding to existing: ', dBasePutParams);
-        if (err) console.error('Unable to add item. Error JSON:', JSON.stringify(err, null, 2));
+        if (err) console.error('Unable to add to existing item. Error JSON:', JSON.stringify(err, null, 2));
+
         else
         {
           getAndPutConnection(infoForDbase, recordNum + 1); // This function calls itself recursively
